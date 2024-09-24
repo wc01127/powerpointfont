@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QVBoxLayout, QWidget, QTextEdit
 from PyQt5.QtCore import Qt
-from powerpoint_processor import process_powerpoint
+from powerpointfont import set_uniform_font, analyze_fonts
+
 
 class PowerPointFontChanger(QMainWindow):
     def __init__(self):
@@ -18,7 +19,8 @@ class PowerPointFontChanger(QMainWindow):
 
         # Font selection dropdown
         self.font_combo = QComboBox()
-        self.font_combo.addItems(['Arial', 'Calibri', 'Times New Roman', 'Helvetica', 'Verdana'])
+        self.font_combo.addItems(
+            ['Arial', 'Calibri', 'Times New Roman', 'Helvetica', 'Verdana'])
         layout.addWidget(QLabel('Select Font:'))
         layout.addWidget(self.font_combo)
 
@@ -53,27 +55,31 @@ class PowerPointFontChanger(QMainWindow):
     def process_file(self, file_path):
         output_file = file_path.rsplit('.', 1)[0] + '_updated.pptx'
         target_font = self.font_combo.currentText()
-        
-        percent_changed, slides_changed = process_powerpoint(file_path, output_file, target_font)
-        
-        # Capture the printed output
-        import io
-        import sys
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        process_powerpoint(file_path, output_file, target_font)
-        sys.stdout = sys.__stdout__
-        debug_info = captured_output.getvalue()
-        
+
+        # Analyze fonts
+        font_analysis = analyze_fonts(file_path)
+
+        # Process the file
+        changes_made, fonts_changed = set_uniform_font(
+            file_path, output_file, target_font)
+
+        # Prepare output text
         output_text = f"File processed: {file_path}\n"
-        output_text += f"Output file: {output_file}\n"
-        output_text += f"Percentage of text changed: {percent_changed:.2f}%\n"
-        if slides_changed:
-            output_text += f"Slides changed: {', '.join(map(str, sorted(slides_changed)))}\n"
+        output_text += f"Target font: {target_font}\n\n"
+
+        output_text += "Font Analysis:\n"
+        for font, count in font_analysis.items():
+            output_text += f"  - {font}: {count} occurrence{'s' if count > 1 else ''}\n"
+
+        output_text += "\nFont Uniformization:\n"
+        if changes_made:
+            output_text += f"Fonts updated to '{target_font}'. Saved as '{output_file}'\n"
+            output_text += "Font changes summary:\n"
+            for font, count in fonts_changed.items():
+                output_text += f"  - {font} to {target_font}: {count} occurrence{'s' if count > 1 else ''}\n"
+            if "Default font" in fonts_changed:
+                output_text += "  Note: Some 'Default font' text was changed to the target font.\n"
         else:
-            output_text += "No slides were changed.\n"
-        
-        output_text += "\nDetailed Debug Information:\n"
-        output_text += debug_info
-        
+            output_text += f"No font changes were necessary. All fonts are already '{target_font}'.\n"
+
         self.output_text.setText(output_text)

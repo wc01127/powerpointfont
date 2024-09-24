@@ -1,4 +1,5 @@
 import os
+import sys
 from pptx import Presentation
 from collections import Counter
 
@@ -61,6 +62,7 @@ def analyze_fonts(input_pptx):
 def set_uniform_font(input_pptx, output_pptx, target_font_name):
     # Load the presentation
     prs = Presentation(input_pptx)
+    changes_made = False
 
     # Iterate through slides
     for slide in prs.slides:
@@ -70,7 +72,9 @@ def set_uniform_font(input_pptx, output_pptx, target_font_name):
             if shape.has_text_frame:
                 for paragraph in shape.text_frame.paragraphs:
                     for run in paragraph.runs:
-                        run.font.name = target_font_name
+                        if run.font.name != target_font_name:
+                            run.font.name = target_font_name
+                            changes_made = True
             # Handle tables
             elif shape.has_table:
                 table = shape.table
@@ -78,7 +82,9 @@ def set_uniform_font(input_pptx, output_pptx, target_font_name):
                     for cell in row.cells:
                         for paragraph in cell.text_frame.paragraphs:
                             for run in paragraph.runs:
-                                run.font.name = target_font_name
+                                if run.font.name != target_font_name:
+                                    run.font.name = target_font_name
+                                    changes_made = True
             # Handle charts
             elif shape.has_chart:
                 chart = shape.chart
@@ -86,25 +92,40 @@ def set_uniform_font(input_pptx, output_pptx, target_font_name):
                 if chart.has_title:
                     for paragraph in chart.chart_title.text_frame.paragraphs:
                         for run in paragraph.runs:
-                            run.font.name = target_font_name
+                            if run.font.name != target_font_name:
+                                run.font.name = target_font_name
+                                changes_made = True
                 # Update axis titles and labels
                 for axis in (chart.category_axis, chart.value_axis):
                     if axis.has_title:
                         for paragraph in axis.axis_title.text_frame.paragraphs:
                             for run in paragraph.runs:
-                                run.font.name = target_font_name
+                                if run.font.name != target_font_name:
+                                    run.font.name = target_font_name
+                                    changes_made = True
                     # Update axis tick labels (if applicable)
                     for tick_label in axis.tick_labels:
-                        tick_label.font.name = target_font_name
+                        if tick_label.font.name != target_font_name:
+                            tick_label.font.name = target_font_name
+                            changes_made = True
                 # Update data labels
                 for series in chart.series:
                     if series.has_data_labels:
                         for data_label in series.data_labels:
-                            data_label.font.name = target_font_name
+                            if data_label.font.name != target_font_name:
+                                data_label.font.name = target_font_name
+                                changes_made = True
 
-    # Save the updated presentation
-    prs.save(output_pptx)
-    print(f"Fonts updated to '{target_font_name}'. Saved as '{output_pptx}'.")
+    # Save the updated presentation only if changes were made
+    if changes_made:
+        prs.save(output_pptx)
+        print(
+            f"Fonts updated to '{target_font_name}'. Saved as '{output_pptx}'.")
+    else:
+        print(
+            f"No font changes were necessary. All fonts are already '{target_font_name}'.")
+
+    return changes_made
 
 
 # New function to list and choose test slides
@@ -133,8 +154,8 @@ def choose_test_slide():
             print("Please enter a valid number.")
 
 
-# Updated usage example
-if __name__ == "__main__":
+# Move the main execution code into a separate function
+def main():
     input_pptx = choose_test_slide()
     if input_pptx:
         analyze_fonts(input_pptx)
@@ -151,3 +172,18 @@ if __name__ == "__main__":
             print("Font uniformization cancelled.")
     else:
         print("No input file selected. Exiting.")
+
+
+# Use this idiom to make the script both importable and executable
+if __name__ == "__main__":
+    if len(sys.argv) != 4:
+        print(
+            "Usage: python3 powerpointfont.py <input_pptx> <output_pptx> <target_font_name>")
+        sys.exit(1)
+
+    input_pptx = sys.argv[1]
+    output_pptx = sys.argv[2]
+    target_font_name = sys.argv[3]
+
+    analyze_fonts(input_pptx)
+    set_uniform_font(input_pptx, output_pptx, target_font_name)
